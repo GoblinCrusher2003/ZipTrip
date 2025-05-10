@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase';
 import { addTrip } from '../api/firestore';
-
+import { loadGoogleMapsScript } from '../utils/loadGoogleMaps';
 
 export default function CreateTrip() {
   const [user] = useAuthState(auth);
@@ -26,25 +26,51 @@ export default function CreateTrip() {
   };
 
   useEffect(() => {
-    if (!window.google || !window.google.maps) return;
+    const loadGoogleMapsScript = () => {
+      return new Promise((resolve, reject) => {
+        if (window.google && window.google.maps) {
+          resolve(); // Already loaded
+          return;
+        }
+  
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${
+          import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+        }&libraries=places`;
+        script.async = true;
+        script.defer = true;
+  
+        script.onload = resolve;
+        script.onerror = reject;
+  
+        document.head.appendChild(script);
+      });
+    };
+  
+    loadGoogleMapsScript(import.meta.env.VITE_GOOGLE_MAPS_API_KEY)  // Use your API key here
+    .then(() => {
+      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+        types: ['(cities)'],
+      });
 
-    const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-      types: ['(cities)'],
-    });
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        let destination = place.name;
 
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-let destination = place.name;
+        if (place.formatted_address) {
+          const parts = place.formatted_address.split(',');
+          destination = parts[0].replace(/^\d{4,6}\s*/, '').trim();
+        }
 
-  if (place.formatted_address) {
-    const parts = place.formatted_address.split(',');
-    destination = parts[0].replace(/^\d{4,6}\s*/, '').trim(); // remove leading postal code
-  }
-
-setForm((prevForm) => ({ ...prevForm, destination }));
-
+        setForm((prevForm) => ({ ...prevForm, destination }));
+      });
+    })
+    .catch((err) => {
+      console.error('Failed to load Google Maps:', err);
     });
   }, []);
+  
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
