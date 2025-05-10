@@ -1,7 +1,8 @@
+import 'dotenv/config';
 import { GoogleGenAI } from "@google/genai";
 
-// Replace with your actual API key or load from .env using dotenv (if you'd like, I can show that too)
-const ai = new GoogleGenAI({ apiKey: "AIzaSyAD-aEwXjEU1dAqtvJrE5kI5fHTpCRr_tA" });
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 async function main() {
   const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
